@@ -20,18 +20,30 @@ package org.apache.skywalking.oap.server.receiver.register.provider.handler.v6.g
 
 import com.google.gson.JsonObject;
 import io.grpc.stub.StreamObserver;
-import java.util.*;
-import org.apache.skywalking.apm.network.common.*;
+import org.apache.skywalking.apm.network.common.Commands;
+import org.apache.skywalking.apm.network.common.KeyIntValuePair;
+import org.apache.skywalking.apm.network.common.KeyStringValuePair;
 import org.apache.skywalking.apm.network.register.v2.*;
 import org.apache.skywalking.apm.util.StringUtil;
-import org.apache.skywalking.oap.server.core.*;
-import org.apache.skywalking.oap.server.core.cache.*;
-import org.apache.skywalking.oap.server.core.register.*;
-import org.apache.skywalking.oap.server.core.register.service.*;
+import org.apache.skywalking.oap.server.core.Const;
+import org.apache.skywalking.oap.server.core.CoreModule;
+import org.apache.skywalking.oap.server.core.cache.ServiceInstanceInventoryCache;
+import org.apache.skywalking.oap.server.core.cache.ServiceInventoryCache;
+import org.apache.skywalking.oap.server.core.kafka.IKafkaSendRegister;
+import org.apache.skywalking.oap.server.core.register.ServiceInstanceInventory;
+import org.apache.skywalking.oap.server.core.register.ServiceInventory;
+import org.apache.skywalking.oap.server.core.register.service.IEndpointInventoryRegister;
+import org.apache.skywalking.oap.server.core.register.service.INetworkAddressInventoryRegister;
+import org.apache.skywalking.oap.server.core.register.service.IServiceInstanceInventoryRegister;
+import org.apache.skywalking.oap.server.core.register.service.IServiceInventoryRegister;
 import org.apache.skywalking.oap.server.core.source.DetectPoint;
 import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.apache.skywalking.oap.server.library.server.grpc.GRPCHandler;
-import org.slf4j.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.skywalking.oap.server.core.register.ServiceInstanceInventory.PropertyUtil.*;
 
@@ -48,6 +60,7 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
     private final IServiceInstanceInventoryRegister serviceInstanceInventoryRegister;
     private final IEndpointInventoryRegister inventoryService;
     private final INetworkAddressInventoryRegister networkAddressInventoryRegister;
+    private final IKafkaSendRegister iKafkaSendRegister;
 
     public RegisterServiceHandler(ModuleManager moduleManager) {
         this.serviceInventoryCache = moduleManager.find(CoreModule.NAME).provider().getService(ServiceInventoryCache.class);
@@ -56,6 +69,7 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
         this.serviceInstanceInventoryRegister = moduleManager.find(CoreModule.NAME).provider().getService(IServiceInstanceInventoryRegister.class);
         this.inventoryService = moduleManager.find(CoreModule.NAME).provider().getService(IEndpointInventoryRegister.class);
         this.networkAddressInventoryRegister = moduleManager.find(CoreModule.NAME).provider().getService(INetworkAddressInventoryRegister.class);
+        this.iKafkaSendRegister = moduleManager.find("kafkaSend").provider().getService(IKafkaSendRegister.class);
     }
 
     @Override public void doServiceRegister(Services request, StreamObserver<ServiceRegisterMapping> responseObserver) {
@@ -110,6 +124,7 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
             }
             instanceProperties.addProperty(IPV4S, ServiceInstanceInventory.PropertyUtil.ipv4sSerialize(ipv4s));
 
+            iKafkaSendRegister.sendMessage(instanceProperties);
             String instanceName = serviceInventory.getName();
             if (instanceProperties.has(PROCESS_NO)) {
                 instanceName += "-pid:" + instanceProperties.get(PROCESS_NO).getAsString();
