@@ -16,4 +16,4 @@
 #
 #
 
-java.org.apache.skywalking.oap.server.plugin.kafka.module.KafkaModule
+org.apache.skywalking.oap.server.plugin.kafka.module.KafkaModule

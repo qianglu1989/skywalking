@@ -1,4 +1,4 @@
-package java.org.apache.skywalking.oap.server.plugin.kafka.base;
+package org.apache.skywalking.oap.server.plugin.kafka.base;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 

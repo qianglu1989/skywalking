@@ -1,10 +1,12 @@
-package java.org.apache.skywalking.oap.server.plugin.kafka.provider;
+package org.apache.skywalking.oap.server.plugin.kafka.provider;
 
+import org.apache.skywalking.oap.server.core.kafka.IKafkaSendRegister;
 import org.apache.skywalking.oap.server.library.module.*;
 
-import java.org.apache.skywalking.oap.server.plugin.kafka.base.KafkaSend;
-import java.org.apache.skywalking.oap.server.plugin.kafka.module.KafkaModule;
-import java.org.apache.skywalking.oap.server.plugin.kafka.provider.handler.KafkaServiceHandler;
+import org.apache.skywalking.oap.server.plugin.kafka.base.KafkaSend;
+import org.apache.skywalking.oap.server.plugin.kafka.module.KafkaModule;
+import org.apache.skywalking.oap.server.plugin.kafka.module.KafkaMoudleConfig;
+import org.apache.skywalking.oap.server.plugin.kafka.provider.handler.KafkaServiceHandler;
 import java.util.Properties;
 
 /**
@@ -14,6 +16,11 @@ import java.util.Properties;
  */
 public class KafkaModuleProvider extends ModuleProvider {
 
+    private KafkaMoudleConfig config;
+
+    public KafkaModuleProvider(){
+        this.config = new KafkaMoudleConfig();
+    }
     @Override
     public String name() {
         return "default";
@@ -26,21 +33,24 @@ public class KafkaModuleProvider extends ModuleProvider {
 
     @Override
     public ModuleConfig createConfigBeanIfAbsent() {
-        return null;
+        return config;
     }
 
     @Override
     public void prepare() throws ServiceNotProvidedException, ModuleStartException {
-        //TODO init config
 
         Properties props = new Properties();
-        props.put("bootstrap.servers", "localhost:9092");
+        props.put("bootstrap.servers", config.getServer());
         props.put("acks", "all");
+        props.put("retries", 0);
+        props.put("batch.size", 16384);
+        props.put("linger.ms", 2000);
+        props.put("buffer.memory", 33554432);
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
-        KafkaServiceHandler kafkaServiceHandler = new KafkaServiceHandler(KafkaSend.builder().properties(props).build());
-        this.registerServiceImplementation(KafkaServiceHandler.class,kafkaServiceHandler);
+        KafkaServiceHandler kafkaServiceHandler = new KafkaServiceHandler(KafkaSend.builder().topic(config.getTopic()).properties(props).build());
+        this.registerServiceImplementation(IKafkaSendRegister.class,kafkaServiceHandler);
     }
 
     @Override

@@ -1,6 +1,7 @@
-package java.org.apache.skywalking.oap.server.plugin.kafka.module;
+package org.apache.skywalking.oap.server.plugin.kafka.module;
 
 
+import org.apache.skywalking.oap.server.core.kafka.IKafkaSendRegister;
 import org.apache.skywalking.oap.server.library.module.ModuleDefine;
 
 /**
@@ -10,7 +11,7 @@ import org.apache.skywalking.oap.server.library.module.ModuleDefine;
  */
 public class KafkaModule extends ModuleDefine {
 
-    public static final String NAME = "kafkaSend";
+    public static final String NAME = "kafka";
 
     public KafkaModule() {
         super(NAME);
@@ -18,6 +19,6 @@ public class KafkaModule extends ModuleDefine {
 
     @Override
     public Class[] services() {
-        return new Class[0];
+        return new Class[]{IKafkaSendRegister.class};
     }
 }

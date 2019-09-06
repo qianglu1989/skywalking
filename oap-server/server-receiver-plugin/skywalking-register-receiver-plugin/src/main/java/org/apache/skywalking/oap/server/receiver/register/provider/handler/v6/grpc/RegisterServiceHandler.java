@@ -69,7 +69,7 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
         this.serviceInstanceInventoryRegister = moduleManager.find(CoreModule.NAME).provider().getService(IServiceInstanceInventoryRegister.class);
         this.inventoryService = moduleManager.find(CoreModule.NAME).provider().getService(IEndpointInventoryRegister.class);
         this.networkAddressInventoryRegister = moduleManager.find(CoreModule.NAME).provider().getService(INetworkAddressInventoryRegister.class);
-        this.iKafkaSendRegister = moduleManager.find("kafkaSend").provider().getService(IKafkaSendRegister.class);
+        this.iKafkaSendRegister = moduleManager.find("kafka").provider().getService(IKafkaSendRegister.class);
     }
 
     @Override public void doServiceRegister(Services request, StreamObserver<ServiceRegisterMapping> responseObserver) {
@@ -85,6 +85,11 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
                 KeyIntValuePair value = KeyIntValuePair.newBuilder().setKey(serviceName).setValue(serviceId).build();
                 builder.addServices(value);
             }
+            JsonObject serviceRegister = new JsonObject();
+            serviceRegister.addProperty("service",serviceName);
+            serviceRegister.addProperty("serviceId",serviceId);
+            iKafkaSendRegister.serviceRegister(serviceRegister);
+
         });
 
         responseObserver.onNext(builder.build());
@@ -124,7 +129,6 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
             }
             instanceProperties.addProperty(IPV4S, ServiceInstanceInventory.PropertyUtil.ipv4sSerialize(ipv4s));
 
-            iKafkaSendRegister.sendMessage(instanceProperties);
             String instanceName = serviceInventory.getName();
             if (instanceProperties.has(PROCESS_NO)) {
                 instanceName += "-pid:" + instanceProperties.get(PROCESS_NO).getAsString();
@@ -139,6 +143,10 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
                 logger.info("register service instance id={} [UUID:{}]", serviceInstanceId, instance.getInstanceUUID());
                 builder.addServiceInstances(KeyIntValuePair.newBuilder().setKey(instance.getInstanceUUID()).setValue(serviceInstanceId));
             }
+            JsonObject msg = instanceProperties;
+            msg.addProperty("serviceId",instance.getServiceId());
+            iKafkaSendRegister.serviceInstanceRegister(msg);
+
         });
 
         responseObserver.onNext(builder.build());

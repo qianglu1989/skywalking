@@ -90,10 +90,13 @@ storage:
 #    metadataQueryMaxSize: ${SW_STORAGE_H2_QUERY_MAX_SIZE:5000}
 #  mysql:
 #    metadataQueryMaxSize: ${SW_STORAGE_H2_QUERY_MAX_SIZE:5000}
-kafka:
-  default:
+
 receiver-sharing-server:
   default:
+kafka:
+  default:
+    server: localhost:9092
+    topic: skymsg
 receiver-register:
   default:
 receiver-trace:
