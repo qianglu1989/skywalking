@@ -6,15 +6,6 @@ import org.apache.skywalking.oap.server.library.module.Service;
 
 public interface IKafkaSendRegister extends Service {
 
-
-    /**
-     * 获取服务实例注册
-     * @param msg
-     * @return
-     */
-    boolean serviceInstanceRegister(JsonObject msg);
-
-
     /**
      * 获取服务注册信息
      * @param msg

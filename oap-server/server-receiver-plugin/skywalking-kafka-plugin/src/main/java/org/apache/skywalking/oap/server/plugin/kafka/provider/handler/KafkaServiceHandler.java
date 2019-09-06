@@ -20,20 +20,8 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
 
 
     @Override
-    public boolean serviceInstanceRegister(JsonObject msg) {
-        try {
-            msg.addProperty("type", "serviceInstanceRegister");
-            send(msg.toString());
-        } catch (Exception e) {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
     public boolean serviceRegister(JsonObject msg) {
         try {
-            msg.addProperty("type", "serviceRegister");
             send(msg.toString());
         } catch (Exception e) {
             return false;
