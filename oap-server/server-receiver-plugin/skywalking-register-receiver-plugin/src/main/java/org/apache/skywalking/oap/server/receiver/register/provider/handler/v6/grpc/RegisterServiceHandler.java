@@ -101,6 +101,8 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
 
         ServiceInstanceRegisterMapping.Builder builder = ServiceInstanceRegisterMapping.newBuilder();
 
+        logger.info("接收到实例注册信息doServiceInstanceRegister:{}",request.getInstancesList());
+
         request.getInstancesList().forEach(instance -> {
             ServiceInventory serviceInventory = serviceInventoryCache.get(instance.getServiceId());
 
@@ -139,16 +141,19 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
 
             int serviceInstanceId = serviceInstanceInventoryRegister.getOrCreate(instance.getServiceId(), instanceName, instance.getInstanceUUID(), instance.getTime(), instanceProperties);
 
-            if (serviceInstanceId != Const.NONE) {
-                logger.info("register service instance id={} [UUID:{}]", serviceInstanceId, instance.getInstanceUUID());
-                builder.addServiceInstances(KeyIntValuePair.newBuilder().setKey(instance.getInstanceUUID()).setValue(serviceInstanceId));
-            }
-
             logger.info("准备发送基础实例注册信息");
             JsonObject msg = instanceProperties;
             msg.addProperty("serviceId",instance.getServiceId());
             msg.addProperty("serviceInstanceId",serviceInstanceId);
             iKafkaSendRegister.serviceRegister(msg);
+
+
+            if (serviceInstanceId != Const.NONE) {
+                logger.info("register service instance id={} [UUID:{}]", serviceInstanceId, instance.getInstanceUUID());
+                builder.addServiceInstances(KeyIntValuePair.newBuilder().setKey(instance.getInstanceUUID()).setValue(serviceInstanceId));
+            }
+
+
 
         });
 
