@@ -144,7 +144,7 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
             logger.info("准备发送基础实例注册信息");
             JsonObject msg = instanceProperties;
             msg.addProperty("serviceId",instance.getServiceId());
-            msg.addProperty("serviceInstanceId",serviceInstanceId);
+            msg.addProperty("instanceName",instanceName);
             iKafkaSendRegister.serviceRegister(msg);
 
 
