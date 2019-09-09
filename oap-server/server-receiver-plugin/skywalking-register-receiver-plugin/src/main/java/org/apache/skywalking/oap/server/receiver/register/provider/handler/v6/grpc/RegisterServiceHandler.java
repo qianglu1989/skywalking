@@ -143,6 +143,8 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
                 logger.info("register service instance id={} [UUID:{}]", serviceInstanceId, instance.getInstanceUUID());
                 builder.addServiceInstances(KeyIntValuePair.newBuilder().setKey(instance.getInstanceUUID()).setValue(serviceInstanceId));
             }
+
+            logger.info("准备发送基础实例注册信息");
             JsonObject msg = instanceProperties;
             msg.addProperty("serviceId",instance.getServiceId());
             msg.addProperty("serviceInstanceId",serviceInstanceId);
