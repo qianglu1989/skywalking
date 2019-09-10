@@ -35,7 +35,6 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
     }
 
     private void send(String msg) {
-        logger.info("发送基础信息:{}",msg);
         ProducerRecord<String, Object> producerRecord = new ProducerRecord<>(kafkaSend.getTopic(), msg);
         kafkaSend.getProducer().send(producerRecord);
     }
