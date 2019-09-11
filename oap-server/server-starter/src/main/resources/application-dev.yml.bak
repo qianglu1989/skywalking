@@ -67,12 +67,12 @@ core:
     enableDatabaseSession: ${SW_CORE_ENABLE_DATABASE_SESSION:true}
 storage:
   elasticsearch:
-    nameSpace: ${SW_NAMESPACE:"skywalking620"}
-    clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:192.168.41.4:9200,192.168.41.5:9200,192.168.41.6:9200}
-    user: ${SW_ES_USER:"skywalking"}
-    password: ${SW_ES_PASSWORD:"skywalking"}
-    indexShardsNumber: ${SW_STORAGE_ES_INDEX_SHARDS_NUMBER:3}
-    indexReplicasNumber: ${SW_STORAGE_ES_INDEX_REPLICAS_NUMBER:1}
+    nameSpace: ${SW_NAMESPACE:""}
+    clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:localhost:9200}
+    user: ${SW_ES_USER:""}
+    password: ${SW_ES_PASSWORD:""}
+    indexShardsNumber: ${SW_STORAGE_ES_INDEX_SHARDS_NUMBER:2}
+    indexReplicasNumber: ${SW_STORAGE_ES_INDEX_REPLICAS_NUMBER:0}
     # Those data TTL settings will override the same settings in core module.
     recordDataTTL: ${SW_STORAGE_ES_RECORD_DATA_TTL:7} # Unit is day
     otherMetricsDataTTL: ${SW_STORAGE_ES_OTHER_METRIC_DATA_TTL:45} # Unit is day
@@ -95,7 +95,7 @@ receiver-sharing-server:
   default:
 kafka:
   default:
-    server: elk2broker1.secoolocal.com:9092,elk2broker2.secoolocal.com:9092,elk2broker3.secoolocal.com:9092
+    server: 10.0.254.35:9092
     topic: skymsg
 receiver-register:
   default:
