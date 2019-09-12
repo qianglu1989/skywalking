@@ -16,6 +16,7 @@ public class KafkaSend {
 
     private volatile KafkaProducer producer;
 
+
     public Properties getProps() {
         return props;
     }
@@ -29,12 +30,17 @@ public class KafkaSend {
     }
 
     public void close(Duration duration) {
-        this.producer.close(duration);
+        if (this.producer != null) {
+            this.producer.close(duration);
+            this.producer = null;
+        }
+
     }
 
     public void close() {
-        this.producer.close(Duration.ofSeconds(10));
+        this.close(Duration.ofSeconds(2));
     }
+
 
     public void setTopic(String topic) {
         this.topic = topic;
@@ -75,4 +81,6 @@ public class KafkaSend {
         }
 
     }
+
+
 }

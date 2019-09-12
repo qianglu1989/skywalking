@@ -97,6 +97,7 @@ kafka:
   default:
     server: 10.0.254.35:9092
     topic: skymsg
+    queueSize: 1000
 receiver-register:
   default:
 receiver-trace:

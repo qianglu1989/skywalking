@@ -97,6 +97,7 @@ kafka:
   default:
     server: elk2broker1.secoolocal.com:9092,elk2broker2.secoolocal.com:9092,elk2broker3.secoolocal.com:9092
     topic: skymsg
+    queueSize: 2000
 receiver-register:
   default:
 receiver-trace:

@@ -18,4 +18,8 @@ public class KafkaMoudleConfig extends ModuleConfig {
     @Getter
     @Setter
     private String topic;
+
+    @Getter
+    @Setter
+    private int queueSize;
 }

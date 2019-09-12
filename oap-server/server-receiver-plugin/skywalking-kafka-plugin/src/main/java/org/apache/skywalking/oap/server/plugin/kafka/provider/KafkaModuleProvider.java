@@ -49,7 +49,7 @@ public class KafkaModuleProvider extends ModuleProvider {
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
-        KafkaServiceHandler kafkaServiceHandler = new KafkaServiceHandler(KafkaSend.builder().topic(config.getTopic()).properties(props).build());
+        KafkaServiceHandler kafkaServiceHandler = new KafkaServiceHandler(KafkaSend.builder().topic(config.getTopic()).properties(props).build(),config.getQueueSize());
         this.registerServiceImplementation(IKafkaSendRegister.class,kafkaServiceHandler);
     }
 

@@ -18,7 +18,6 @@
 
 package org.apache.skywalking.oap.server.receiver.register.provider.handler.v6.grpc;
 
-import com.google.gson.JsonObject;
 import io.grpc.stub.StreamObserver;
 import org.apache.skywalking.apm.network.common.Command;
 import org.apache.skywalking.apm.network.common.Commands;
@@ -67,10 +66,8 @@ public class ServiceInstancePingServiceHandler extends ServiceInstancePingGrpc.S
         serviceInstanceInventoryRegister.heartbeat(serviceInstanceId, heartBeatTime);
 
         ServiceInstanceInventory serviceInstanceInventory = serviceInstanceInventoryCache.get(serviceInstanceId);
+        sendPingStat(serviceInstanceInventory);
         if (Objects.nonNull(serviceInstanceInventory)) {
-            JsonObject obj = new JsonObject();
-            obj.addProperty(serviceInstanceInventory.getName(), serviceInstanceInventory.getHeartbeatTime());
-            iKafkaSendRegister.sendMsg(obj.toString(), "skyheart");
             serviceInventoryRegister.heartbeat(serviceInstanceInventory.getServiceId(), heartBeatTime);
             responseObserver.onNext(Commands.getDefaultInstance());
         } else {
@@ -84,5 +81,15 @@ public class ServiceInstancePingServiceHandler extends ServiceInstancePingGrpc.S
         }
 
         responseObserver.onCompleted();
+    }
+
+
+    private void sendPingStat(ServiceInstanceInventory serviceInstanceInventory) {
+        try {
+            iKafkaSendRegister.offermsg(serviceInstanceInventory.getName()+"_"+serviceInstanceInventory.getHeartbeatTime());
+            logger.info("exwarn:发送:{} 心跳信息", serviceInstanceInventory.getName());
+        } catch (Exception e) {
+            logger.warn("exwarn :sendPingStat信息出现异常:{}", e);
+        }
     }
 }
