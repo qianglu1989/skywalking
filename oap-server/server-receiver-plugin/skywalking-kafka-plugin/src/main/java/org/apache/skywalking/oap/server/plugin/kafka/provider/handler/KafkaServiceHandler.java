@@ -89,7 +89,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
         try {
             ProducerRecord<String, Object> producerRecord = new ProducerRecord<>(StringUtil.isEmpty(topic) ? kafkaSend.getTopic() : topic, msg);
             kafkaSend.getProducer().send(producerRecord);
-        } finally {
+        } catch (Exception e) {
             kafkaSend.close();
         }
 
