@@ -56,7 +56,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
     @Override
     public boolean serviceRegister(JsonObject msg) {
         try {
-            send(msg.toString(), null);
+            send(msg.toString(), null,null);
         } catch (Exception e) {
             logger.error("exwarn: 发送注册信息:{}", e);
             return false;
@@ -67,7 +67,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
     @Override
     public boolean sendMsg(String msg, String topic) {
         try {
-            send(msg, topic);
+            send(msg, topic,null);
         } catch (Exception e) {
             logger.error("exwarn:发送MQ信息出现异常:{}", e);
             return false;
@@ -85,9 +85,10 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
 
     }
 
-    public void send(Object msg, String topic) {
+    public void send(Object msg, String topic,Integer partition) {
         try {
-            ProducerRecord<String, Object> producerRecord = new ProducerRecord<>(StringUtil.isEmpty(topic) ? kafkaSend.getTopic() : topic, msg);
+
+            ProducerRecord<String, Object> producerRecord = new ProducerRecord<>(StringUtil.isEmpty(topic) ? kafkaSend.getTopic() : topic, partition,null, msg);
             kafkaSend.getProducer().send(producerRecord);
         } catch (Exception e) {
             kafkaSend.close();
@@ -107,7 +108,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
                     if (buffer.size() > 0) {
                         Gson gson = new Gson();
                         String data = gson.toJson(buffer);
-                        send(data, "skyheart");
+                        send(data, "skyheart",0);
                         logger.info("exwarn MatrixSender send buffer data:{}", buffer.size());
                     }
                 } catch (Exception e) {
