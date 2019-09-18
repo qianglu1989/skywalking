@@ -1,6 +1,6 @@
 package org.apache.skywalking.oap.server.plugin.kafka.provider.handler;
 
-import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
@@ -29,7 +29,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
     private KafkaSend kafkaSend;
 
     private MatrixSender matrixSender;
-    private LinkedBlockingQueue<String> queue;
+    private LinkedBlockingQueue<JsonObject> queue;
     private volatile ScheduledFuture<?> sendMetricFuture;
 
     public KafkaServiceHandler(KafkaSend kafkaSend, int queueSize) {
@@ -56,7 +56,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
     @Override
     public boolean serviceRegister(JsonObject msg) {
         try {
-            send(msg.toString(), null,null);
+            send(msg.toString(), null, null);
         } catch (Exception e) {
             logger.error("exwarn: 发送注册信息:{}", e);
             return false;
@@ -67,7 +67,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
     @Override
     public boolean sendMsg(String msg, String topic) {
         try {
-            send(msg, topic,null);
+            send(msg, topic, null);
         } catch (Exception e) {
             logger.error("exwarn:发送MQ信息出现异常:{}", e);
             return false;
@@ -77,7 +77,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
 
 
     @Override
-    public void offermsg(String msg) {
+    public void offermsg(JsonObject msg) {
         if (!queue.offer(msg)) {
             queue.poll();
             queue.offer(msg);
@@ -85,10 +85,10 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
 
     }
 
-    public void send(Object msg, String topic,Integer partition) {
+    public void send(Object msg, String topic, Integer partition) {
         try {
 
-            ProducerRecord<String, Object> producerRecord = new ProducerRecord<>(StringUtil.isEmpty(topic) ? kafkaSend.getTopic() : topic, partition,null, msg);
+            ProducerRecord<String, Object> producerRecord = new ProducerRecord<>(StringUtil.isEmpty(topic) ? kafkaSend.getTopic() : topic, partition, null, msg);
             kafkaSend.getProducer().send(producerRecord);
         } catch (Exception e) {
             kafkaSend.close();
@@ -103,18 +103,26 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
         public void run() {
             if (kafkaSend != null && kafkaSend.getProducer() != null) {
                 try {
-                    LinkedList<String> buffer = new LinkedList<String>();
+                    LinkedList<JsonObject> buffer = new LinkedList<>();
                     queue.drainTo(buffer);
                     if (buffer.size() > 0) {
-                        Gson gson = new Gson();
-                        String data = gson.toJson(buffer);
-                        send(data, "skyheart",0);
+                        String data = dispose(buffer);
+                        send(data, null, 0);
                         logger.info("exwarn MatrixSender send buffer data:{}", buffer.size());
                     }
                 } catch (Exception e) {
                     logger.error("send MQ metrics to Collector fail.{}", e);
                 }
             }
+        }
+
+        private String dispose(LinkedList<JsonObject> buffer) {
+            JsonArray array = new JsonArray();
+            buffer.forEach(obj -> {
+                array.add(obj);
+            });
+
+            return array.toString();
         }
 
 

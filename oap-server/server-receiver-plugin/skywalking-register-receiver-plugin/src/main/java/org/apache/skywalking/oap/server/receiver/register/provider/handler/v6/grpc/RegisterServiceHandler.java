@@ -143,8 +143,8 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
             msg.addProperty("serviceId",instance.getServiceId());
             msg.addProperty("instanceName",instanceName);
             msg.addProperty("registerTime",serviceInventory.getRegisterTime());
-            iKafkaSendRegister.serviceRegister(msg);
-
+            msg.addProperty("type","register");
+            iKafkaSendRegister.offermsg(msg);
 
             if (serviceInstanceId != Const.NONE) {
                 logger.info("register service instance id={} [UUID:{}]", serviceInstanceId, instance.getInstanceUUID());

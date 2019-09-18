@@ -18,6 +18,7 @@
 
 package org.apache.skywalking.oap.server.receiver.register.provider.handler.v6.grpc;
 
+import com.google.gson.JsonObject;
 import io.grpc.stub.StreamObserver;
 import org.apache.skywalking.apm.network.common.Command;
 import org.apache.skywalking.apm.network.common.Commands;
@@ -86,7 +87,11 @@ public class ServiceInstancePingServiceHandler extends ServiceInstancePingGrpc.S
 
     private void sendPingStat(ServiceInstanceInventory serviceInstanceInventory) {
         try {
-            iKafkaSendRegister.offermsg(serviceInstanceInventory.getName()+"_"+serviceInstanceInventory.getHeartbeatTime());
+            JsonObject msg = new JsonObject();
+            msg.addProperty("type","ping");
+            msg.addProperty("name",serviceInstanceInventory.getName());
+            msg.addProperty("heartBeatTime",serviceInstanceInventory.getHeartbeatTime());
+            iKafkaSendRegister.offermsg(msg);
             logger.info("exwarn:发送:{} 心跳信息", serviceInstanceInventory.getName());
         } catch (Exception e) {
             logger.warn("exwarn :sendPingStat信息出现异常:{}", e);

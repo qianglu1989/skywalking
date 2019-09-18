@@ -15,7 +15,7 @@ public interface IKafkaSendRegister extends Service {
 
     boolean sendMsg(String msg,String topic);
 
-    public void offermsg(String msg);
+    public void offermsg(JsonObject msg);
 
 
 }
