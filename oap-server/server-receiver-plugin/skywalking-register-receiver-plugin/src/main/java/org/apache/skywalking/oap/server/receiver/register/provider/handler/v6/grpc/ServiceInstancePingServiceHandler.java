@@ -66,8 +66,8 @@ public class ServiceInstancePingServiceHandler extends ServiceInstancePingGrpc.S
         serviceInstanceInventoryRegister.heartbeat(serviceInstanceId, heartBeatTime);
 
         ServiceInstanceInventory serviceInstanceInventory = serviceInstanceInventoryCache.get(serviceInstanceId);
-        sendPingStat(serviceInstanceInventory);
         if (Objects.nonNull(serviceInstanceInventory)) {
+            sendPingStat(serviceInstanceInventory);
             serviceInventoryRegister.heartbeat(serviceInstanceInventory.getServiceId(), heartBeatTime);
             responseObserver.onNext(Commands.getDefaultInstance());
         } else {
