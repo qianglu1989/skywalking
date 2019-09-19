@@ -18,22 +18,33 @@
 
 package org.apache.skywalking.oap.server.core.cache;
 
-import com.google.common.cache.*;
-import java.util.Objects;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.skywalking.oap.server.core.Const;
 import org.apache.skywalking.oap.server.core.register.ServiceInventory;
 import org.apache.skywalking.oap.server.core.storage.StorageModule;
 import org.apache.skywalking.oap.server.core.storage.cache.IServiceInventoryCacheDAO;
-import org.apache.skywalking.oap.server.library.module.*;
+import org.apache.skywalking.oap.server.library.module.ModuleManager;
+import org.apache.skywalking.oap.server.library.module.Service;
 import org.apache.skywalking.oap.server.library.util.BooleanUtils;
-import org.slf4j.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static java.util.Objects.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 /**
  * @author peng-yongsheng
  */
-public class ServiceInventoryCache implements Service {
+public class ServiceInventoryCache implements Service, Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(ServiceInventoryCache.class);
 
@@ -41,7 +52,8 @@ public class ServiceInventoryCache implements Service {
     private final Cache<String, Integer> serviceNameCache = CacheBuilder.newBuilder().initialCapacity(100).maximumSize(1000).build();
     private final Cache<String, Integer> addressIdCache = CacheBuilder.newBuilder().initialCapacity(100).maximumSize(1000).build();
     private final Cache<Integer, ServiceInventory> serviceIdCache = CacheBuilder.newBuilder().initialCapacity(100).maximumSize(1000).build();
-
+    private final Set<Integer> ignoreIdCache = new HashSet<>();
+    private volatile ScheduledFuture<?> cleanScheduled;
     private final ModuleManager moduleManager;
     private IServiceInventoryCacheDAO cacheDAO;
 
@@ -52,6 +64,12 @@ public class ServiceInventoryCache implements Service {
         this.userService.setSequence(Const.USER_SERVICE_ID);
         this.userService.setName(Const.USER_CODE);
         this.userService.setIsAddress(BooleanUtils.FALSE);
+        init();
+    }
+
+    private void init() {
+        cleanScheduled =
+                Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory("ServiceInventoryCacheClean-IgnoreCache")).scheduleAtFixedRate(this, 0l, 10, TimeUnit.MINUTES);
     }
 
     private IServiceInventoryCacheDAO getCacheDAO() {
@@ -90,13 +108,15 @@ public class ServiceInventoryCache implements Service {
             logger.debug("Get service by id {} from cache", serviceId);
         }
 
-        if (Const.USER_SERVICE_ID == serviceId) {
+        if (Const.USER_SERVICE_ID == serviceId || ignoreIdCache.contains(serviceId)) {
             return userService;
         }
 
         ServiceInventory serviceInventory = serviceIdCache.getIfPresent(serviceId);
 
         if (isNull(serviceInventory)) {
+            ignoreIdCache.add(serviceId);
+
             serviceInventory = getCacheDAO().get(serviceId);
             if (nonNull(serviceInventory)) {
                 serviceIdCache.put(serviceId, serviceInventory);
@@ -110,5 +130,11 @@ public class ServiceInventoryCache implements Service {
         }
 
         return serviceInventory;
+    }
+
+
+    @Override
+    public void run() {
+        ignoreIdCache.clear();
     }
 }
