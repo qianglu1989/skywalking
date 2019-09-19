@@ -35,10 +35,7 @@ import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * @author wusheng
@@ -84,21 +81,23 @@ public class JVMSourceDispatcher {
         cpuMetric.put("usePercent", cpu.getUsagePercent());
         jvmMetric.put("cpu", cpuMetric);
         //Memory
+        List<Map<String, Object>> memorys = new ArrayList<>();
         memories.forEach(memory -> {
-            int i = 1;
             Map<String, Object> memoryMetric = new HashMap<>();
             memoryMetric.put("isHeap", memory.getIsHeap());
             memoryMetric.put("init", memory.getInit());
             memoryMetric.put("max", memory.getMax());
             memoryMetric.put("used", memory.getUsed());
             memoryMetric.put("committed", memory.getCommitted());
-            jvmMetric.put("memory" + i++, memoryMetric);
+            memorys.add(memoryMetric);
 
         });
+        jvmMetric.put("memory", memorys);
 
         //MemoryPool
+        List<Map<String, Object>> memPools = new ArrayList<>();
+
         memoryPools.forEach(memoryPool -> {
-            int i = 1;
             Map<String, Object> memoryPoolMetric = new HashMap<>();
             switch (memoryPool.getType()) {
                 case NEWGEN_USAGE:
@@ -124,10 +123,11 @@ public class JVMSourceDispatcher {
             memoryPoolMetric.put("max", memoryPool.getMax());
             memoryPoolMetric.put("used", memoryPool.getUsed());
             memoryPoolMetric.put("commited", memoryPool.getCommited());
-            jvmMetric.put("memoryPool" + i++, memoryPoolMetric);
-
+            memPools.add(memoryPoolMetric);
         });
+        jvmMetric.put("memoryPool", memPools);
         //GC
+        List<Map<String, Object>> gcAll = new ArrayList<>();
         gcs.forEach(gc -> {
             int i = 1;
             Map<String, Object> gcPoolMetric = new HashMap<>();
@@ -141,9 +141,11 @@ public class JVMSourceDispatcher {
             }
             gcPoolMetric.put("time", gc.getTime());
             gcPoolMetric.put("count", gc.getCount());
-            jvmMetric.put("gc" + i++, gcPoolMetric);
+            gcAll.add(gcPoolMetric);
+
 
         });
+        jvmMetric.put("gc", gcAll);
         JsonObject obj = new JsonObject();
         Gson gson = new Gson();
         String jvm = gson.toJson(jvmMetric);
