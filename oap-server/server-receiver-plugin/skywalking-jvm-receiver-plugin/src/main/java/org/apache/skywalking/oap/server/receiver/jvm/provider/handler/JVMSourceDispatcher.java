@@ -68,8 +68,8 @@ public class JVMSourceDispatcher {
         this.sendToMemoryMetricProcess(serviceId, serviceInstanceId, minuteTimeBucket, metrics.getMemoryList());
         this.sendToMemoryPoolMetricProcess(serviceId, serviceInstanceId, minuteTimeBucket, metrics.getMemoryPoolList());
         this.sendToGCMetricProcess(serviceId, serviceInstanceId, minuteTimeBucket, metrics.getGcList());
-        this.sendToJvmMetric(serviceInstanceInventory, minuteTimeBucket, metrics.getTime(), metrics.getCpu(),
-                metrics.getMemoryList(), metrics.getMemoryPoolList(), metrics.getGcList());
+//        this.sendToJvmMetric(serviceInstanceInventory, minuteTimeBucket, metrics.getTime(), metrics.getCpu(),
+//                metrics.getMemoryList(), metrics.getMemoryPoolList(), metrics.getGcList());
     }
 
     private void sendToJvmMetric(ServiceInstanceInventory serviceInstanceInventory, long minuteTimeBucket,
