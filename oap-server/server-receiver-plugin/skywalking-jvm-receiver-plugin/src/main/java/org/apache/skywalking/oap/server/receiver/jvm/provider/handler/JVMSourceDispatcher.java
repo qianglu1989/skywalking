@@ -18,16 +18,25 @@
 
 package org.apache.skywalking.oap.server.receiver.jvm.provider.handler;
 
-import java.util.*;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.apache.skywalking.apm.network.common.CPU;
-import org.apache.skywalking.apm.network.language.agent.*;
-import org.apache.skywalking.oap.server.core.*;
+import org.apache.skywalking.apm.network.language.agent.GC;
+import org.apache.skywalking.apm.network.language.agent.JVMMetric;
+import org.apache.skywalking.apm.network.language.agent.Memory;
+import org.apache.skywalking.apm.network.language.agent.MemoryPool;
+import org.apache.skywalking.oap.server.core.Const;
+import org.apache.skywalking.oap.server.core.CoreModule;
+import org.apache.skywalking.oap.server.core.analysis.TimeBucket;
 import org.apache.skywalking.oap.server.core.cache.ServiceInstanceInventoryCache;
+import org.apache.skywalking.oap.server.core.kafka.IKafkaSendRegister;
 import org.apache.skywalking.oap.server.core.register.ServiceInstanceInventory;
-import org.apache.skywalking.oap.server.core.source.GCPhrase;
 import org.apache.skywalking.oap.server.core.source.*;
 import org.apache.skywalking.oap.server.library.module.ModuleManager;
-import org.slf4j.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 /**
  * @author wusheng
@@ -36,10 +45,13 @@ public class JVMSourceDispatcher {
     private static final Logger logger = LoggerFactory.getLogger(JVMSourceDispatcher.class);
     private final SourceReceiver sourceReceiver;
     private final ServiceInstanceInventoryCache instanceInventoryCache;
+    private final IKafkaSendRegister iKafkaSendRegister;
 
     public JVMSourceDispatcher(ModuleManager moduleManager) {
         this.sourceReceiver = moduleManager.find(CoreModule.NAME).provider().getService(SourceReceiver.class);
         this.instanceInventoryCache = moduleManager.find(CoreModule.NAME).provider().getService(ServiceInstanceInventoryCache.class);
+        this.iKafkaSendRegister = moduleManager.find("kafka").provider().getService(IKafkaSendRegister.class);
+
     }
 
     void sendMetric(int serviceInstanceId, long minuteTimeBucket, JVMMetric metrics) {
@@ -56,6 +68,102 @@ public class JVMSourceDispatcher {
         this.sendToMemoryMetricProcess(serviceId, serviceInstanceId, minuteTimeBucket, metrics.getMemoryList());
         this.sendToMemoryPoolMetricProcess(serviceId, serviceInstanceId, minuteTimeBucket, metrics.getMemoryPoolList());
         this.sendToGCMetricProcess(serviceId, serviceInstanceId, minuteTimeBucket, metrics.getGcList());
+//        this.sendToJvmMetric(serviceInstanceInventory, minuteTimeBucket, metrics.getTime(), metrics.getCpu(),
+//                metrics.getMemoryList(), metrics.getMemoryPoolList(), metrics.getGcList());
+    }
+
+    private void sendToJvmMetric(ServiceInstanceInventory serviceInstanceInventory, long minuteTimeBucket,
+                                 long second, CPU cpu, List<Memory> memories, List<MemoryPool> memoryPools,
+                                 List<GC> gcs) {
+        try {
+
+
+            long secondTimeBucket = TimeBucket.getSecondTimeBucket(second);
+            Map<String, Object> jvmMetric = new HashMap<>();
+            jvmMetric.put("name", serviceInstanceInventory.getName());
+            jvmMetric.put("minuteTimeBucket", minuteTimeBucket);
+            jvmMetric.put("secondTimeBucket", secondTimeBucket);
+
+            //CPU
+            Map<String, Object> cpuMetric = new HashMap<>();
+            cpuMetric.put("usePercent", cpu.getUsagePercent());
+            jvmMetric.put("cpu", cpuMetric);
+            //Memory
+            List<Map<String, Object>> memorys = new ArrayList<>();
+            memories.forEach(memory -> {
+                Map<String, Object> memoryMetric = new HashMap<>();
+                memoryMetric.put("isHeap", memory.getIsHeap());
+                memoryMetric.put("init", memory.getInit());
+                memoryMetric.put("max", memory.getMax());
+                memoryMetric.put("used", memory.getUsed());
+                memoryMetric.put("committed", memory.getCommitted());
+                memorys.add(memoryMetric);
+
+            });
+            jvmMetric.put("memory", memorys);
+
+            //MemoryPool
+            List<Map<String, Object>> memPools = new ArrayList<>();
+
+            memoryPools.forEach(memoryPool -> {
+                Map<String, Object> memoryPoolMetric = new HashMap<>();
+                switch (memoryPool.getType()) {
+                    case NEWGEN_USAGE:
+                        memoryPoolMetric.put("memoryPoolType", MemoryPoolType.NEWGEN_USAGE);
+                        break;
+                    case OLDGEN_USAGE:
+                        memoryPoolMetric.put("memoryPoolType", MemoryPoolType.OLDGEN_USAGE);
+                        break;
+                    case PERMGEN_USAGE:
+                        memoryPoolMetric.put("memoryPoolType", MemoryPoolType.PERMGEN_USAGE);
+                        break;
+                    case SURVIVOR_USAGE:
+                        memoryPoolMetric.put("memoryPoolType", MemoryPoolType.SURVIVOR_USAGE);
+                        break;
+                    case METASPACE_USAGE:
+                        memoryPoolMetric.put("memoryPoolType", MemoryPoolType.METASPACE_USAGE);
+                        break;
+                    case CODE_CACHE_USAGE:
+                        memoryPoolMetric.put("memoryPoolType", MemoryPoolType.CODE_CACHE_USAGE);
+                        break;
+                }
+                memoryPoolMetric.put("init", memoryPool.getInit());
+                memoryPoolMetric.put("max", memoryPool.getMax());
+                memoryPoolMetric.put("used", memoryPool.getUsed());
+                memoryPoolMetric.put("commited", memoryPool.getCommited());
+                memPools.add(memoryPoolMetric);
+            });
+            jvmMetric.put("memoryPool", memPools);
+            //GC
+            List<Map<String, Object>> gcAll = new ArrayList<>();
+            gcs.forEach(gc -> {
+                int i = 1;
+                Map<String, Object> gcPoolMetric = new HashMap<>();
+                switch (gc.getPhrase()) {
+                    case NEW:
+                        gcPoolMetric.put("phrase", GCPhrase.NEW);
+                        break;
+                    case OLD:
+                        gcPoolMetric.put("phrase", GCPhrase.OLD);
+                        break;
+                }
+                gcPoolMetric.put("time", gc.getTime());
+                gcPoolMetric.put("count", gc.getCount());
+                gcAll.add(gcPoolMetric);
+
+
+            });
+            jvmMetric.put("gc", gcAll);
+            JsonObject obj = new JsonObject();
+            Gson gson = new Gson();
+            String jvm = gson.toJson(jvmMetric);
+            obj.addProperty("jvm", jvm);
+            obj.addProperty("type", "jvm");
+            iKafkaSendRegister.offermsg(obj);
+
+        } catch (Exception e) {
+            logger.error("处理jvm数据异常:{}", e.getMessage());
+        }
     }
 
     private void sendToCpuMetricProcess(int serviceId, int serviceInstanceId, long timeBucket, CPU cpu) {
@@ -94,7 +202,7 @@ public class JVMSourceDispatcher {
     }
 
     private void sendToMemoryMetricProcess(int serviceId, int serviceInstanceId, long timeBucket,
-        List<Memory> memories) {
+                                           List<Memory> memories) {
         memories.forEach(memory -> {
             ServiceInstanceJVMMemory serviceInstanceJVMMemory = new ServiceInstanceJVMMemory();
             serviceInstanceJVMMemory.setId(serviceInstanceId);
@@ -112,7 +220,7 @@ public class JVMSourceDispatcher {
     }
 
     private void sendToMemoryPoolMetricProcess(int serviceId, int serviceInstanceId, long timeBucket,
-        List<MemoryPool> memoryPools) {
+                                               List<MemoryPool> memoryPools) {
 
         memoryPools.forEach(memoryPool -> {
             ServiceInstanceJVMMemoryPool serviceInstanceJVMMemoryPool = new ServiceInstanceJVMMemoryPool();

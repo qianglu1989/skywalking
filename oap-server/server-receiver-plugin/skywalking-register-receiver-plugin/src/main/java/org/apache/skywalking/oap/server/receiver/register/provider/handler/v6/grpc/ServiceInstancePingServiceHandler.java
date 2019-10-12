@@ -18,6 +18,7 @@
 
 package org.apache.skywalking.oap.server.receiver.register.provider.handler.v6.grpc;
 
+import com.google.gson.JsonObject;
 import io.grpc.stub.StreamObserver;
 import org.apache.skywalking.apm.network.common.Command;
 import org.apache.skywalking.apm.network.common.Commands;
@@ -27,6 +28,7 @@ import org.apache.skywalking.apm.network.trace.component.command.ServiceResetCom
 import org.apache.skywalking.oap.server.core.CoreModule;
 import org.apache.skywalking.oap.server.core.cache.ServiceInstanceInventoryCache;
 import org.apache.skywalking.oap.server.core.command.CommandService;
+import org.apache.skywalking.oap.server.core.kafka.IKafkaSendRegister;
 import org.apache.skywalking.oap.server.core.register.ServiceInstanceInventory;
 import org.apache.skywalking.oap.server.core.register.service.IServiceInstanceInventoryRegister;
 import org.apache.skywalking.oap.server.core.register.service.IServiceInventoryRegister;
@@ -47,26 +49,31 @@ public class ServiceInstancePingServiceHandler extends ServiceInstancePingGrpc.S
     private final IServiceInventoryRegister serviceInventoryRegister;
     private final IServiceInstanceInventoryRegister serviceInstanceInventoryRegister;
     private final CommandService commandService;
+    private final IKafkaSendRegister iKafkaSendRegister;
 
     public ServiceInstancePingServiceHandler(ModuleManager moduleManager) {
         this.serviceInstanceInventoryCache = moduleManager.find(CoreModule.NAME).provider().getService(ServiceInstanceInventoryCache.class);
         this.serviceInventoryRegister = moduleManager.find(CoreModule.NAME).provider().getService(IServiceInventoryRegister.class);
         this.serviceInstanceInventoryRegister = moduleManager.find(CoreModule.NAME).provider().getService(IServiceInstanceInventoryRegister.class);
         this.commandService = moduleManager.find(CoreModule.NAME).provider().getService(CommandService.class);
+        this.iKafkaSendRegister = moduleManager.find("kafka").provider().getService(IKafkaSendRegister.class);
+
     }
 
-    @Override public void doPing(ServiceInstancePingPkg request, StreamObserver<Commands> responseObserver) {
+    @Override
+    public void doPing(ServiceInstancePingPkg request, StreamObserver<Commands> responseObserver) {
         int serviceInstanceId = request.getServiceInstanceId();
         long heartBeatTime = request.getTime();
         serviceInstanceInventoryRegister.heartbeat(serviceInstanceId, heartBeatTime);
 
         ServiceInstanceInventory serviceInstanceInventory = serviceInstanceInventoryCache.get(serviceInstanceId);
         if (Objects.nonNull(serviceInstanceInventory)) {
+            sendPingStat(serviceInstanceInventory);
             serviceInventoryRegister.heartbeat(serviceInstanceInventory.getServiceId(), heartBeatTime);
             responseObserver.onNext(Commands.getDefaultInstance());
         } else {
             logger.warn("Can't find service by service instance id from cache," +
-                " service instance id is: {}, will send a reset command to agent side", serviceInstanceId);
+                    " service instance id is: {}, will send a reset command to agent side", serviceInstanceId);
 
             final ServiceResetCommand resetCommand = commandService.newResetCommand(request.getServiceInstanceId(), request.getTime(), request.getServiceInstanceUUID());
             final Command command = resetCommand.serialize().build();
@@ -75,5 +82,19 @@ public class ServiceInstancePingServiceHandler extends ServiceInstancePingGrpc.S
         }
 
         responseObserver.onCompleted();
+    }
+
+
+    private void sendPingStat(ServiceInstanceInventory serviceInstanceInventory) {
+        try {
+            JsonObject msg = new JsonObject();
+            msg.addProperty("type","ping");
+            msg.addProperty("name",serviceInstanceInventory.getName());
+            msg.addProperty("heartBeatTime",serviceInstanceInventory.getHeartbeatTime());
+            iKafkaSendRegister.offermsg(msg);
+            logger.info("exwarn:发送:{} 心跳信息", serviceInstanceInventory.getName());
+        } catch (Exception e) {
+            logger.warn("exwarn :sendPingStat信息出现异常:{}", e);
+        }
     }
 }

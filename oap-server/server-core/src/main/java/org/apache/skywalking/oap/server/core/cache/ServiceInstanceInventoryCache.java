@@ -18,22 +18,32 @@
 
 package org.apache.skywalking.oap.server.core.cache;
 
-import com.google.common.cache.*;
-import java.util.Objects;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.skywalking.oap.server.core.Const;
 import org.apache.skywalking.oap.server.core.register.ServiceInstanceInventory;
 import org.apache.skywalking.oap.server.core.storage.StorageModule;
 import org.apache.skywalking.oap.server.core.storage.cache.IServiceInstanceInventoryCacheDAO;
-import org.apache.skywalking.oap.server.library.module.*;
+import org.apache.skywalking.oap.server.library.module.ModuleManager;
+import org.apache.skywalking.oap.server.library.module.Service;
 import org.apache.skywalking.oap.server.library.util.BooleanUtils;
-import org.slf4j.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import static java.util.Objects.isNull;
 
 /**
  * @author peng-yongsheng
  */
-public class ServiceInstanceInventoryCache implements Service {
+public class ServiceInstanceInventoryCache implements Service,Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(ServiceInstanceInventoryCache.class);
 
@@ -43,7 +53,8 @@ public class ServiceInstanceInventoryCache implements Service {
     private final Cache<String, Integer> serviceInstanceNameCache = CacheBuilder.newBuilder().initialCapacity(100).maximumSize(5000).build();
 
     private final Cache<String, Integer> addressIdCache = CacheBuilder.newBuilder().initialCapacity(100).maximumSize(5000).build();
-
+    private final Set<Integer> ignoreIdCache = new HashSet<>();
+    private volatile ScheduledFuture<?> cleanScheduled;
     private final ModuleManager moduleManager;
     private IServiceInstanceInventoryCacheDAO cacheDAO;
 
@@ -55,6 +66,12 @@ public class ServiceInstanceInventoryCache implements Service {
         this.userServiceInstance.setName(Const.USER_CODE);
         this.userServiceInstance.setServiceId(Const.USER_SERVICE_ID);
         this.userServiceInstance.setIsAddress(BooleanUtils.FALSE);
+        init();
+    }
+
+    private void init() {
+        cleanScheduled =
+                Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory("ServiceInstanceInventoryCacheClean-IgnoreCache")).scheduleAtFixedRate(this, 0l, 10, TimeUnit.MINUTES);
     }
 
     private IServiceInstanceInventoryCacheDAO getCacheDAO() {
@@ -65,13 +82,14 @@ public class ServiceInstanceInventoryCache implements Service {
     }
 
     public ServiceInstanceInventory get(int serviceInstanceId) {
-        if (Const.USER_INSTANCE_ID == serviceInstanceId) {
+        if (Const.USER_INSTANCE_ID == serviceInstanceId || ignoreIdCache.contains(serviceInstanceId)) {
             return userServiceInstance;
         }
 
         ServiceInstanceInventory serviceInstanceInventory = serviceInstanceIdCache.getIfPresent(serviceInstanceId);
 
         if (Objects.isNull(serviceInstanceInventory)) {
+            ignoreIdCache.add(serviceInstanceId);
             serviceInstanceInventory = getCacheDAO().get(serviceInstanceId);
             if (Objects.nonNull(serviceInstanceInventory)) {
                 serviceInstanceIdCache.put(serviceInstanceId, serviceInstanceInventory);
@@ -102,5 +120,10 @@ public class ServiceInstanceInventoryCache implements Service {
             }
         }
         return serviceInstanceId;
+    }
+
+    @Override
+    public void run() {
+        ignoreIdCache.clear();
     }
 }

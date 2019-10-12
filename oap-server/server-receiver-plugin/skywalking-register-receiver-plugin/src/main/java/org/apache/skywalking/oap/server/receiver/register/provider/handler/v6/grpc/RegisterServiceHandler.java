@@ -36,11 +36,13 @@ import org.apache.skywalking.apm.network.register.v2.ServiceInstanceRegisterMapp
 import org.apache.skywalking.apm.network.register.v2.ServiceInstances;
 import org.apache.skywalking.apm.network.register.v2.ServiceRegisterMapping;
 import org.apache.skywalking.apm.network.register.v2.Services;
+
 import org.apache.skywalking.apm.util.StringUtil;
 import org.apache.skywalking.oap.server.core.Const;
 import org.apache.skywalking.oap.server.core.CoreModule;
 import org.apache.skywalking.oap.server.core.cache.ServiceInstanceInventoryCache;
 import org.apache.skywalking.oap.server.core.cache.ServiceInventoryCache;
+import org.apache.skywalking.oap.server.core.kafka.IKafkaSendRegister;
 import org.apache.skywalking.oap.server.core.register.ServiceInstanceInventory;
 import org.apache.skywalking.oap.server.core.register.ServiceInventory;
 import org.apache.skywalking.oap.server.core.register.service.IEndpointInventoryRegister;
@@ -52,6 +54,9 @@ import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.apache.skywalking.oap.server.library.server.grpc.GRPCHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.skywalking.oap.server.core.register.ServiceInstanceInventory.PropertyUtil.HOST_NAME;
 import static org.apache.skywalking.oap.server.core.register.ServiceInstanceInventory.PropertyUtil.IPV4S;
@@ -72,6 +77,7 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
     private final IServiceInstanceInventoryRegister serviceInstanceInventoryRegister;
     private final IEndpointInventoryRegister inventoryService;
     private final INetworkAddressInventoryRegister networkAddressInventoryRegister;
+    private final IKafkaSendRegister iKafkaSendRegister;
 
     public RegisterServiceHandler(ModuleManager moduleManager) {
         this.serviceInventoryCache = moduleManager.find(CoreModule.NAME).provider().getService(ServiceInventoryCache.class);
@@ -80,6 +86,7 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
         this.serviceInstanceInventoryRegister = moduleManager.find(CoreModule.NAME).provider().getService(IServiceInstanceInventoryRegister.class);
         this.inventoryService = moduleManager.find(CoreModule.NAME).provider().getService(IEndpointInventoryRegister.class);
         this.networkAddressInventoryRegister = moduleManager.find(CoreModule.NAME).provider().getService(INetworkAddressInventoryRegister.class);
+        this.iKafkaSendRegister = moduleManager.find("kafka").provider().getService(IKafkaSendRegister.class);
     }
 
     @Override public void doServiceRegister(Services request, StreamObserver<ServiceRegisterMapping> responseObserver) {
@@ -95,6 +102,7 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
                 KeyIntValuePair value = KeyIntValuePair.newBuilder().setKey(serviceName).setValue(serviceId).build();
                 builder.addServices(value);
             }
+
         });
 
         responseObserver.onNext(builder.build());
@@ -105,6 +113,8 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
         StreamObserver<ServiceInstanceRegisterMapping> responseObserver) {
 
         ServiceInstanceRegisterMapping.Builder builder = ServiceInstanceRegisterMapping.newBuilder();
+
+        logger.info("接收到实例注册信息doServiceInstanceRegister:{}",request.getInstancesList());
 
         request.getInstancesList().forEach(instance -> {
             ServiceInventory serviceInventory = serviceInventoryCache.get(instance.getServiceId());
@@ -146,10 +156,19 @@ public class RegisterServiceHandler extends RegisterGrpc.RegisterImplBase implem
 
             int serviceInstanceId = serviceInstanceInventoryRegister.getOrCreate(instance.getServiceId(), instanceName, instance.getInstanceUUID(), instance.getTime(), instanceProperties);
 
+            JsonObject msg = instanceProperties;
+            msg.addProperty("name",serviceInventory.getName());
+            msg.addProperty("serviceId",instance.getServiceId());
+            msg.addProperty("instanceName",instanceName);
+            msg.addProperty("registerTime",serviceInventory.getRegisterTime());
+            msg.addProperty("type","register");
+            iKafkaSendRegister.offermsg(msg);
+
             if (serviceInstanceId != Const.NONE) {
                 logger.info("register service instance id={} [UUID:{}]", serviceInstanceId, instance.getInstanceUUID());
                 builder.addServiceInstances(KeyIntValuePair.newBuilder().setKey(instance.getInstanceUUID()).setValue(serviceInstanceId));
             }
+
         });
 
         responseObserver.onNext(builder.build());
