@@ -74,12 +74,12 @@ core:
 storage:
   elasticsearch:
     nameSpace: ${SW_NAMESPACE:"skywalking620"}
-    clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:192.168.41.4:9200,192.168.41.5:9200,192.168.41.6:9200}
+    clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:10.0.254.33:9201}
     protocol: ${SW_STORAGE_ES_HTTP_PROTOCOL:"http"}
     #trustStorePath: ${SW_SW_STORAGE_ES_SSL_JKS_PATH:"../es_keystore.jks"}
     #trustStorePass: ${SW_SW_STORAGE_ES_SSL_JKS_PASS:""}
-    user: ${SW_ES_USER:"skywalking"}
-    password: ${SW_ES_PASSWORD:"skywalking"}
+#    user: ${SW_ES_USER:"skywalking"}
+#    password: ${SW_ES_PASSWORD:"skywalking"}
     indexShardsNumber: ${SW_STORAGE_ES_INDEX_SHARDS_NUMBER:3}
     indexReplicasNumber: ${SW_STORAGE_ES_INDEX_REPLICAS_NUMBER:1}
     # Those data TTL settings will override the same settings in core module.
@@ -104,7 +104,7 @@ receiver-sharing-server:
   default:
 kafka:
   default:
-    server: elk2broker1.secoolocal.com:9092,elk2broker2.secoolocal.com:9092,elk2broker3.secoolocal.com:9092
+    server: 10.0.254.35:9092
     topic: skymsg
     queueSize: 2000
 receiver-register:
