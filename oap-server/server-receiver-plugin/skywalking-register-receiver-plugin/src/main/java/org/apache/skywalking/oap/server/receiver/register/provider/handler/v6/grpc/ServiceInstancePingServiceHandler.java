@@ -92,7 +92,6 @@ public class ServiceInstancePingServiceHandler extends ServiceInstancePingGrpc.S
             msg.addProperty("name",serviceInstanceInventory.getName());
             msg.addProperty("heartBeatTime",serviceInstanceInventory.getHeartbeatTime());
             iKafkaSendRegister.offermsg(msg);
-            logger.info("exwarn:发送:{} 心跳信息", serviceInstanceInventory.getName());
         } catch (Exception e) {
             logger.warn("exwarn :sendPingStat信息出现异常:{}", e);
         }
