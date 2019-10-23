@@ -1,6 +1,7 @@
 package org.apache.skywalking.oap.server.core.kafka;
 
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.apache.skywalking.oap.server.library.module.Service;
 
@@ -15,7 +16,7 @@ public interface IKafkaSendRegister extends Service {
 
     boolean sendMsg(String msg,String topic);
 
-    public void offermsg(JsonObject msg);
+    public void offermsg(JsonElement msg);
 
 
 }

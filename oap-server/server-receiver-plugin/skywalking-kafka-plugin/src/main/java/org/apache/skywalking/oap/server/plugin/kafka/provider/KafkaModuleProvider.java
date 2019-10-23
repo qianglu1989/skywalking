@@ -51,6 +51,7 @@ public class KafkaModuleProvider extends ModuleProvider {
 
         KafkaServiceHandler kafkaServiceHandler = new KafkaServiceHandler(KafkaSend.builder().topic(config.getTopic()).properties(props).build(),config.getQueueSize());
         this.registerServiceImplementation(IKafkaSendRegister.class,kafkaServiceHandler);
+        KafkaProcessor.getInstance().setKafkaSendRegister(kafkaServiceHandler);
     }
 
     @Override

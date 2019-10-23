@@ -1,6 +1,7 @@
 package org.apache.skywalking.oap.server.plugin.kafka.provider.handler;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
@@ -29,7 +30,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
     private KafkaSend kafkaSend;
 
     private MatrixSender matrixSender;
-    private LinkedBlockingQueue<JsonObject> queue;
+    private LinkedBlockingQueue<JsonElement> queue;
     private volatile ScheduledFuture<?> sendMetricFuture;
 
     public KafkaServiceHandler(KafkaSend kafkaSend, int queueSize) {
@@ -77,7 +78,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
 
 
     @Override
-    public void offermsg(JsonObject msg) {
+    public void offermsg(JsonElement msg) {
         if (!queue.offer(msg)) {
             queue.poll();
             queue.offer(msg);
@@ -103,7 +104,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
         public void run() {
             if (kafkaSend != null && kafkaSend.getProducer() != null) {
                 try {
-                    LinkedList<JsonObject> buffer = new LinkedList<>();
+                    LinkedList<JsonElement> buffer = new LinkedList<>();
                     queue.drainTo(buffer);
                     if (buffer.size() > 0) {
                         String data = dispose(buffer);
@@ -116,7 +117,7 @@ public class KafkaServiceHandler implements IKafkaSendRegister {
             }
         }
 
-        private String dispose(LinkedList<JsonObject> buffer) {
+        private String dispose(LinkedList<JsonElement> buffer) {
             JsonArray array = new JsonArray();
             buffer.forEach(obj -> {
                 array.add(obj);

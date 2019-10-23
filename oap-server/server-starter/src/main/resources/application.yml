@@ -73,8 +73,8 @@ core:
     enableDatabaseSession: ${SW_CORE_ENABLE_DATABASE_SESSION:true}
 storage:
   elasticsearch:
-    nameSpace: ${SW_NAMESPACE:"skywalking620"}
-    clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:10.0.254.33:9201}
+    nameSpace: ${SW_NAMESPACE:"skywalking"}
+    clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:10.0.254.33:9203}
     protocol: ${SW_STORAGE_ES_HTTP_PROTOCOL:"http"}
     #trustStorePath: ${SW_SW_STORAGE_ES_SSL_JKS_PATH:"../es_keystore.jks"}
     #trustStorePass: ${SW_SW_STORAGE_ES_SSL_JKS_PASS:""}
@@ -104,7 +104,7 @@ receiver-sharing-server:
   default:
 kafka:
   default:
-    server: 10.0.254.35:9092
+    server: localhost:9092
     topic: skymsg
     queueSize: 2000
 receiver-register:
