@@ -14,8 +14,8 @@ import org.apache.skywalking.oap.server.plugin.kafka.base.DataType;
  * @Date 2019/10/23 3:35 下午
  * @Version 1.0
  */
-public class KafkaDispatcher implements SourceDispatcher<Endpoint> {
-    @Override
+public class KafkaDispatcher  {
+
     public void dispatch(Endpoint source) {
         Gson gson = new Gson();
         JsonElement element = gson.toJsonTree(source);
