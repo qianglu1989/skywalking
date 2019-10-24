@@ -90,6 +90,7 @@ public class ServiceInstancePingServiceHandler extends ServiceInstancePingGrpc.S
             JsonObject msg = new JsonObject();
             msg.addProperty("dataType","ping");
             msg.addProperty("name",serviceInstanceInventory.getName());
+            msg.addProperty("serviceId",serviceInstanceInventory.getServiceId());
             msg.addProperty("heartBeatTime",serviceInstanceInventory.getHeartbeatTime());
             iKafkaSendRegister.offermsg(msg);
         } catch (Exception e) {
